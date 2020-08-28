@@ -1,0 +1,871 @@
+<?php
+
+/**
+ * @file
+ * Provides a payment method for Drupal Commerce using Linnworks
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function mtr_commerce_linnworks_stock_management_menu() {
+
+  // Define a linnworks stock list.
+  $items = array();
+
+  $items['report/linnworks/stockitems'] = array(
+    'title' => t('Linnworks Stock items'),
+    'page callback' => 'mtr_linnworks_stock_list',
+    'type' => MENU_NORMAL_ITEM,
+    'access callback' => TRUE,
+  );
+
+
+  $items['report/linnworks/stocktest'] = array(
+    'title' => t('Linnworks Stock items'),
+    'page callback' => 'mtr_linnworks_stock_test',
+    'type' => MENU_NORMAL_ITEM,
+    'access callback' => TRUE,
+  );
+
+
+  return $items;
+}
+
+function mtr_linnworks_stock_test() {
+
+  $my_view_name = 'linnworks_commerce_backoffice_orders';
+  $my_display_name = 'admin_page';
+  $my_view = views_get_view($my_view_name);
+  $my_view->set_display($my_display_name);
+
+  $start = '2020-05-03 00:00:00';
+
+  $filters = $my_view->display_handler->get_option('filters');
+  dpm($filters, "filters");
+  // Filtering peding or completed status
+  $filters['status']['value'] = ["pending", "pending_credit", "processing", "refunded", "payment_not_cleared", "completed"];
+  /*
+    $filters['created'] = array(
+    'id' => 'created',
+    'table' => 'commerce_order',
+    'field' => 'created',
+    'relationship' => 'none',
+    'group_type' => 'group',
+    'ui_name' => '',
+    'operator' => '>',
+    'value' => array(
+    'min' => "",
+    'max' => "",
+    'value' => $start,
+    'type' => "date"
+    ),
+    'group' => "1",
+    "exposed" => FALSE,
+    "is_grouped" => FALSE
+    );
+
+    $my_view->display_handler->override_option('filters', $filters);
+   */
+  /*
+    $filters['updated'] = array(
+    'id' => 'updated',
+    'table' => 'commerce_order',
+    'field' => 'updated',
+    'relationship' => 'none',
+    'group_type' => 'group',
+    'ui_name' => '',
+    'operator' => '>',
+    'value' => array(
+    'min' => "",
+    'max' => "",
+    'value' => $start,
+    'type' => "date"
+    ),
+    'group' => "1",
+    "exposed" => FALSE,
+    "is_grouped" => FALSE
+    );
+   * 
+   * 
+   * 
+   */
+
+  $filters['changed_1']['value']['value'] = $start;
+
+  $my_view->display_handler->override_option('filters', $filters);
+  dpm($filters, "filters");
+  $my_view->execute();
+
+  $objects = $my_view->result;
+
+  dpm($objects, "objects");
+
+  return ("AAA");
+}
+
+function mtr_linnworks_stock_list() {
+
+  module_load_include('inc', 'mtr_commerce_linnworks_stock_management');
+  $settings = array();
+  $authorizeByApplication = mtr_commerce_linnworks_stock_management_init($settings);
+
+  $linnworks_stock_list = mtr_linnworks_GetStockItemsFull($authorizeByApplication);
+
+  $rows = array();
+  // build the table header
+  $header = array();
+  $coloumns = ["Nid", "Product ID", "ItemTitle", "ItemNumber", "StockLevel"];
+  foreach ($coloumns as $key => $value) {
+    $header[] = array('data' => $value, 'class' => 'header-class');
+  }
+
+  foreach ($linnworks_stock_list as $key => $value) {
+    $row = array();
+    $line = json_decode(json_encode($value), true);
+    $row[] = array('data' => isset($line["ItemExtendedProperties"][5]["PropertyValue"]) ? $line["ItemExtendedProperties"][5]["PropertyValue"] : "", 'class' => 'row-class');
+    $row[] = array('data' => isset($line["ItemExtendedProperties"][5]["PropertyValue"]) ? $line["ItemExtendedProperties"][6]["PropertyValue"] : "", 'class' => 'row-class');
+    $row[] = array('data' => $line["ItemTitle"], 'class' => 'row-class');
+    $row[] = array('data' => $line["ItemNumber"], 'class' => 'row-class');
+    $row[] = array('data' => $line["StockLevels"][0]["StockLevel"], 'class' => 'row-class');
+    $rows[] = array('data' => $row);
+  }
+
+  $data = array(
+    'header' => $header,
+    'rows' => $rows
+  );
+  $output = theme('table', $data);
+  //dpm($rows, "rows");
+  return $output;
+}
+
+/**
+ * Implements hook_node_presave().
+ */
+function mtr_commerce_linnworks_stock_management_node_presave($node) {
+
+  $node_types = ['accessory', 'mobile_device', 'other_tech', 'smart_watch'];
+  if (in_array($node->type, $node_types)) {
+
+    $product = variable_get('linnworks_stock_new_product', []);
+
+    if (!empty($product) && !empty($node->nid)) {
+
+      $settings = array();
+      $nid = $node->nid;
+      $title = $node->title;
+
+      module_load_include('inc', 'mtr_commerce_linnworks_stock_management');
+
+      //dpm($node, "node");
+      //dpm($product, '$product');
+      if (isset($node->field_product['und'])) {
+
+        foreach ($node->field_product['und'] as $row) {
+
+          if (isset($row['product_id']) && $product->product_id == $row['product_id']) {
+            $pid = $row['product_id'];
+            $sku = $product->sku;
+            $created = date("c", $node->created);
+            $now = substr(date("c"), 0, 19) . ".1+00:00";
+
+            $authorizeByApplication = mtr_commerce_linnworks_stock_management_init($settings);
+            $Items = mtr_linnworks_GetStockItemIdsBySKU($authorizeByApplication, $sku);
+
+            if (empty($Items->Items)) {
+              // Insert new item
+              // collecting categories
+
+              $categories = mtr_linnworks_GetCategories($authorizeByApplication);
+              $product_category_tid = $node->field_product_category['und'][0]['tid'];
+              $product_taxonomy = taxonomy_term_load($product_category_tid);
+              $product_category_name = $product_taxonomy->name;
+              $product_category = [];
+
+              foreach ($categories as $key => $category) {
+
+                if ($category->CategoryName == $product_category_name) {
+                  $product_category[] = $category;
+                }
+              }
+
+              // add new category if there is no
+              // add InventoryItem
+
+              $StockItemId = getNodeGUID("long");
+
+              $post = [
+                "ItemDescription" => "",
+                "Quantity" => $product->commerce_stock['und'][0]['value'],
+                "InOrder" => 3,
+                "Due" => 4,
+                "MinimumLevel" => 5,
+                "Available" => -1,
+                "IsCompositeParent" => true,
+                "ItemNumber" => $sku,
+                "ItemTitle" => $product->title,
+                "BarcodeNumber" => "",
+                "MetaData" => "Import from 4Gadgets",
+                "isBatchedStockType" => false,
+                "PurchasePrice" => 0,
+                "RetailPrice" => $product->commerce_price['und'][0]['amount'] / 100,
+                "TaxRate" => 20,
+                "CategoryId" => $product_category[0]->CategoryId,
+                "CategoryName" => $product_category[0]->CategoryName,
+                "CreationDate" => $created,
+                "StockItemId" => $StockItemId
+              ];
+              //"CreationDate" => "2020-04-23T11:40:21.9491712+01:00",
+              $Items = mtr_linnworks_AddInventoryItem($authorizeByApplication, $post);
+
+              // Inventory /AddImageToInventoryItem
+
+              $url = file_create_url($node->field_images['und'][0]['uri']);
+
+              $request = [
+                "ItemNumber" => $sku,
+                "StockItemId" => $StockItemId,
+                "IsMain" => True,
+                "ImageUrl" => $url
+              ];
+
+              $response = mtr_linnworks_AddImageToInventoryItem($authorizeByApplication, $request);
+
+              //dpm($response, "AddImage");
+              // Inventory /CreateInventoryItemExtendedProperties
+
+              $ExtendedProperties = [];
+
+              $MTRExtendedPropertyTypes_product = ["Grade" => "field_grade", "Network" => "field_network", "Status" => "status", "Storage capacity" => "field_storage_capacity"];
+              $MTRExtendedPropertyTypes_node = ["Colour" => "field_colour", "Make" => "field_make", "Model" => "field_model", "Nid" => "nid", "Product ID" => "pid", "Type" => "type"];
+
+              foreach ($MTRExtendedPropertyTypes_product as $key => $MTRExtendedPropertyType) {
+                //dpm($entity->{$MTRExtendedPropertyType}['und'][0]['tid'], '$var');
+                if ($key != "Status") {
+                  $new_value = isset($product->{$MTRExtendedPropertyType}['und'][0]['tid']) ? $product->{$MTRExtendedPropertyType}['und'][0]['tid'] : "";
+                  $term = taxonomy_term_load($new_value);
+                  $value = $new_value != "" ? $term->name : "";
+                  $ExtendedProperties[] = [
+                    "fkStockItemId" => $StockItemId,
+                    "SKU" => $sku,
+                    "ProperyName" => $key,
+                    "PropertyValue" => $value,
+                    "PropertyType" => "Attribute"
+                  ];
+                }
+                else {
+                  $new_value = $product->{$MTRExtendedPropertyType};
+                  $value = $new_value == "1" ? "Yes" : "No";
+                  $ExtendedProperties[] = [
+                    "fkStockItemId" => $StockItemId,
+                    "SKU" => $sku,
+                    "ProperyName" => $key,
+                    "PropertyValue" => $value,
+                    "PropertyType" => "Attribute"
+                  ];
+                }
+              }
+
+              foreach ($MTRExtendedPropertyTypes_node as $key => $MTRExtendedPropertyType) {
+                //dpm($entity->{$MTRExtendedPropertyType}['und'][0]['tid'], '$var');
+                if ($key == "Colour" || $key == "Make" || $key == "Model") {
+                  $new_value = isset($node->{$MTRExtendedPropertyType}['und'][0]['tid']) ? $node->{$MTRExtendedPropertyType}['und'][0]['tid'] : "";
+                  $term = taxonomy_term_load($new_value);
+                  $value = $new_value != "" ? $term->name : "";
+                  $ExtendedProperties[] = [
+                    "fkStockItemId" => $StockItemId,
+                    "SKU" => $sku,
+                    "ProperyName" => $key,
+                    "PropertyValue" => $value,
+                    "PropertyType" => "Attribute"
+                  ];
+                }
+                elseif ($key == "Type") {
+                  $value = $node->{$MTRExtendedPropertyType};
+                  $ExtendedProperties[] = [
+                    "fkStockItemId" => $StockItemId,
+                    "SKU" => $sku,
+                    "ProperyName" => $key,
+                    "PropertyValue" => $value,
+                    "PropertyType" => "Attribute"
+                  ];
+                }
+                elseif ($key == "Nid") {
+                  $value = $node->{$MTRExtendedPropertyType};
+                  $ExtendedProperties[] = [
+                    "fkStockItemId" => $StockItemId,
+                    "SKU" => $sku,
+                    "ProperyName" => $key,
+                    "PropertyValue" => $value,
+                    "PropertyType" => "Compatibility"
+                  ];
+                }
+                elseif ($key == "Product ID") {
+                  $value = $pid;
+                  $ExtendedProperties[] = [
+                    "fkStockItemId" => $StockItemId,
+                    "SKU" => $sku,
+                    "ProperyName" => $key,
+                    "PropertyValue" => $value,
+                    "PropertyType" => "Compatibility"
+                  ];
+                }
+              }
+
+              if (!empty($ExtendedProperties)) {
+                $ExtendedProperties[] = [
+                  "fkStockItemId" => $StockItemId,
+                  "SKU" => $sku,
+                  "ProperyName" => "Source",
+                  "PropertyValue" => "4Gadgets",
+                  "PropertyType" => "Attribute"
+                ];
+                $response = mtr_linnworks_CreateInventoryItemExtendedProperties($authorizeByApplication, $ExtendedProperties);
+              }
+
+              // Inventory /CreateInventoryItemChannelSKUs
+
+              $request = [
+                "ChannelSKURowId" => getNodeGUID("long"),
+                "SKU" => $sku,
+                "Source" => "4GadgetsChannel",
+                "SubSource" => "4GadgetsChannel",
+                "UpdateStatus" => "",
+                "ChannelReferenceId" => getNodeGUID("long"),
+                "LastUpdate" => $now,
+                "SubmittedQuantity" => $product->commerce_stock['und'][0]['value'],
+                "ListedQuantity" => $product->commerce_stock['und'][0]['value'],
+                "IgnoreSync" => false,
+                "IgnoreSyncMultiLocation" => false,
+                "IsMultiLocation" => true,
+                "StockItemId" => $StockItemId,
+                "StockItemIntId" => 0
+              ];
+
+              $response = mtr_linnworks_CreateInventoryItemChannelSKUs($authorizeByApplication, $request);
+              // 
+              // Inventory /CreateInventoryItemPrices
+              $request = [
+                "Rules" => [],
+                "pkRowId" => getNodeGUID("long"),
+                "Source" => "4GadgetsChannel",
+                "SubSource" => "4GadgetsChannel",
+                "Price" => $product->commerce_price['und'][0]['amount'] / 100,
+                "Tag" => "",
+                "UpdateStatus" => "NoChange",
+                "StockItemId" => $StockItemId,
+                "StockItemIntId" => 0
+              ];
+
+              $response = mtr_linnworks_CreateInventoryItemPrices($authorizeByApplication, $request);
+
+              //dpm($response, 'response CreateInventoryItemPrice');
+              // Stock /CheckVariationParentSKUExists
+              $title_cleaned = str_replace(array("&amp;", "&quot;"), array("", ""), $title);
+              $variationsku = convert_to_alpha_numeric_hyphens($title_cleaned);
+
+              $response = mtr_linnworks_CheckVariationParentSKUExists($authorizeByApplication, $variationsku);
+              //  dpm ($request,"CheckVariationParentSKUExists");
+              //    dpm ($response,"CheckVariationParentSKUExists");
+              if ($response == "NotExists") {
+                //Stock /CreateVariationGroup
+
+                $request = [
+                  "VariationGroupName" => $title,
+                  "ParentSKU" => $variationsku,
+                  "ParentStockItemId" => getNodeGUID("long"),
+                  "VariationItemIds" => [
+                    $StockItemId
+                  ]
+                ];
+
+                $response = mtr_linnworks_CreateVariationGroup($authorizeByApplication, $request);
+
+                //  dpm ($request,"CreateVariationGroup request");
+                //   dpm ($response,"CreateVariationGroup response");
+              }
+              else {
+
+                //GetVariationGroupByName
+                $response = mtr_linnworks_GetVariationGroupByName($authorizeByApplication, $title_cleaned);
+
+                if (isset($response->pkVariationItemId)) {
+                  $pkVariationItemId = $response->pkVariationItemId;
+
+                  //AddVariationItems 
+                  $request = [
+                    "pkVariationItemId" => $pkVariationItemId,
+                    "pkStockItemIds" => $StockItemId
+                  ];
+                  $response = mtr_linnworks_AddVariationItems($authorizeByApplication, $request);
+                }
+              }
+            }
+          }
+        }
+      }
+      variable_set('linnworks_stock_new_product', []);
+    }
+  }
+}
+
+function mtr_commerce_linnworks_stock_management_node_insert($node) {
+
+  $node_types = ['accessory', 'mobile_device', 'other_tech', 'smart_watch'];
+  if (in_array($node->type, $node_types)) {
+
+    $product = variable_get('linnworks_stock_new_product', []);
+
+    if (!empty($product)) {
+
+      $settings = array();
+      $nid = $node->nid;
+      $title = $node->title;
+
+      module_load_include('inc', 'mtr_commerce_linnworks_stock_management');
+
+
+      if (isset($node->field_product['und'])) {
+
+        foreach ($node->field_product['und'] as $row) {
+
+          if (isset($row['product_id']) && $product->product_id == $row['product_id']) {
+            $pid = $row['product_id'];
+            $sku = $product->sku;
+            $created = date("c", $node->created);
+            $now = substr(date("c"), 0, 19) . ".1+00:00";
+
+            $authorizeByApplication = mtr_commerce_linnworks_stock_management_init($settings);
+            $Items = mtr_linnworks_GetStockItemIdsBySKU($authorizeByApplication, $sku);
+
+            if (empty($Items->Items)) {
+              // Insert new item
+              // collecting categories
+
+              $categories = mtr_linnworks_GetCategories($authorizeByApplication);
+              $product_category_tid = $node->field_product_category['und'][0]['tid'];
+              $product_taxonomy = taxonomy_term_load($product_category_tid);
+              $product_category_name = $product_taxonomy->name;
+              $product_category = [];
+
+              foreach ($categories as $key => $category) {
+
+                if ($category->CategoryName == $product_category_name) {
+                  $product_category[] = $category;
+                }
+              }
+
+              // add new category if there is no
+              // add InventoryItem
+
+              $StockItemId = getNodeGUID("long");
+
+              $post = [
+                "ItemDescription" => "",
+                "Quantity" => $product->commerce_stock['und'][0]['value'],
+                "InOrder" => 3,
+                "Due" => 4,
+                "MinimumLevel" => 5,
+                "Available" => -1,
+                "IsCompositeParent" => true,
+                "ItemNumber" => $sku,
+                "ItemTitle" => $product->title,
+                "BarcodeNumber" => "",
+                "MetaData" => "Import from 4Gadgets",
+                "isBatchedStockType" => false,
+                "PurchasePrice" => 0,
+                "RetailPrice" => $product->commerce_price['und'][0]['amount'] / 100,
+                "TaxRate" => 20,
+                "CategoryId" => $product_category[0]->CategoryId,
+                "CategoryName" => $product_category[0]->CategoryName,
+                "CreationDate" => $created,
+                "StockItemId" => $StockItemId
+              ];
+              //"CreationDate" => "2020-04-23T11:40:21.9491712+01:00",
+              $Items = mtr_linnworks_AddInventoryItem($authorizeByApplication, $post);
+
+              // Inventory /AddImageToInventoryItem
+
+              $url = file_create_url($node->field_images['und'][0]['uri']);
+
+              $request = [
+                "ItemNumber" => $sku,
+                "StockItemId" => $StockItemId,
+                "IsMain" => True,
+                "ImageUrl" => $url
+              ];
+
+              $response = mtr_linnworks_AddImageToInventoryItem($authorizeByApplication, $request);
+
+              //dpm($response, "AddImage");
+              // Inventory /CreateInventoryItemExtendedProperties
+
+              $ExtendedProperties = [];
+
+              $MTRExtendedPropertyTypes_product = ["Grade" => "field_grade", "Network" => "field_network", "Status" => "status", "Storage capacity" => "field_storage_capacity"];
+              $MTRExtendedPropertyTypes_node = ["Colour" => "field_colour", "Make" => "field_make", "Model" => "field_model", "Nid" => "nid", "Product ID" => "pid", "Type" => "type"];
+
+              foreach ($MTRExtendedPropertyTypes_product as $key => $MTRExtendedPropertyType) {
+                //dpm($entity->{$MTRExtendedPropertyType}['und'][0]['tid'], '$var');
+                if ($key != "Status") {
+                  $new_value = isset($product->{$MTRExtendedPropertyType}['und'][0]['tid']) ? $product->{$MTRExtendedPropertyType}['und'][0]['tid'] : "";
+                  $term = taxonomy_term_load($new_value);
+                  $value = $new_value != "" ? $term->name : "";
+                  $ExtendedProperties[] = [
+                    "fkStockItemId" => $StockItemId,
+                    "SKU" => $sku,
+                    "ProperyName" => $key,
+                    "PropertyValue" => $value,
+                    "PropertyType" => "Attribute"
+                  ];
+                }
+                else {
+                  $new_value = $product->{$MTRExtendedPropertyType};
+                  $value = $new_value == "1" ? "Yes" : "No";
+                  $ExtendedProperties[] = [
+                    "fkStockItemId" => $StockItemId,
+                    "SKU" => $sku,
+                    "ProperyName" => $key,
+                    "PropertyValue" => $value,
+                    "PropertyType" => "Attribute"
+                  ];
+                }
+              }
+
+              foreach ($MTRExtendedPropertyTypes_node as $key => $MTRExtendedPropertyType) {
+                //dpm($entity->{$MTRExtendedPropertyType}['und'][0]['tid'], '$var');
+                if ($key == "Colour" || $key == "Make" || $key == "Model") {
+                  $new_value = isset($node->{$MTRExtendedPropertyType}['und'][0]['tid']) ? $node->{$MTRExtendedPropertyType}['und'][0]['tid'] : "";
+                  $term = taxonomy_term_load($new_value);
+                  $value = $new_value != "" ? $term->name : "";
+                  $ExtendedProperties[] = [
+                    "fkStockItemId" => $StockItemId,
+                    "SKU" => $sku,
+                    "ProperyName" => $key,
+                    "PropertyValue" => $value,
+                    "PropertyType" => "Attribute"
+                  ];
+                }
+                elseif ($key == "Type") {
+                  $value = $node->{$MTRExtendedPropertyType};
+                  $ExtendedProperties[] = [
+                    "fkStockItemId" => $StockItemId,
+                    "SKU" => $sku,
+                    "ProperyName" => $key,
+                    "PropertyValue" => $value,
+                    "PropertyType" => "Attribute"
+                  ];
+                }
+                elseif ($key == "Nid") {
+                  $value = $node->{$MTRExtendedPropertyType};
+                  $ExtendedProperties[] = [
+                    "fkStockItemId" => $StockItemId,
+                    "SKU" => $sku,
+                    "ProperyName" => $key,
+                    "PropertyValue" => $value,
+                    "PropertyType" => "Compatibility"
+                  ];
+                }
+                elseif ($key == "Product ID") {
+                  $value = $pid;
+                  $ExtendedProperties[] = [
+                    "fkStockItemId" => $StockItemId,
+                    "SKU" => $sku,
+                    "ProperyName" => $key,
+                    "PropertyValue" => $value,
+                    "PropertyType" => "Compatibility"
+                  ];
+                }
+              }
+
+              if (!empty($ExtendedProperties)) {
+                $ExtendedProperties[] = [
+                  "fkStockItemId" => $StockItemId,
+                  "SKU" => $sku,
+                  "ProperyName" => "Source",
+                  "PropertyValue" => "4Gadgets",
+                  "PropertyType" => "Attribute"
+                ];
+                $response = mtr_linnworks_CreateInventoryItemExtendedProperties($authorizeByApplication, $ExtendedProperties);
+              }
+
+              // Inventory /CreateInventoryItemChannelSKUs
+
+              $request = [
+                "ChannelSKURowId" => getNodeGUID("long"),
+                "SKU" => $sku,
+                "Source" => "4GadgetsChannel",
+                "SubSource" => "4GadgetsChannel",
+                "UpdateStatus" => "",
+                "ChannelReferenceId" => getNodeGUID("long"),
+                "LastUpdate" => $now,
+                "SubmittedQuantity" => $product->commerce_stock['und'][0]['value'],
+                "ListedQuantity" => $product->commerce_stock['und'][0]['value'],
+                "IgnoreSync" => false,
+                "IgnoreSyncMultiLocation" => false,
+                "IsMultiLocation" => true,
+                "StockItemId" => $StockItemId,
+                "StockItemIntId" => 0
+              ];
+
+              $response = mtr_linnworks_CreateInventoryItemChannelSKUs($authorizeByApplication, $request);
+              // 
+              // Inventory /CreateInventoryItemPrices
+              $request = [
+                "Rules" => [],
+                "pkRowId" => getNodeGUID("long"),
+                "Source" => "4GadgetsChannel",
+                "SubSource" => "4GadgetsChannel",
+                "Price" => $product->commerce_price['und'][0]['amount'] / 100,
+                "Tag" => "",
+                "UpdateStatus" => "NoChange",
+                "StockItemId" => $StockItemId,
+                "StockItemIntId" => 0
+              ];
+
+              $response = mtr_linnworks_CreateInventoryItemPrices($authorizeByApplication, $request);
+
+              //dpm($response, 'response CreateInventoryItemPrice');
+              // Stock /CheckVariationParentSKUExists
+              $title_cleaned = str_replace(array("&amp;", "&quot;"), array("", ""), $title);
+              $variationsku = convert_to_alpha_numeric_hyphens($title_cleaned);
+
+              $response = mtr_linnworks_CheckVariationParentSKUExists($authorizeByApplication, $variationsku);
+
+              if ($response == "NotExists") {
+                //Stock /CreateVariationGroup
+
+                $request = [
+                  "VariationGroupName" => $title,
+                  "ParentSKU" => $variationsku,
+                  "ParentStockItemId" => getNodeGUID("long"),
+                  "VariationItemIds" => [
+                    $StockItemId
+                  ]
+                ];
+
+                $response = mtr_linnworks_CreateVariationGroup($authorizeByApplication, $request);
+
+                //  dpm ($request,"CreateVariationGroup request");
+                //   dpm ($response,"CreateVariationGroup response");
+              }
+              else {
+
+                //GetVariationGroupByName
+                $response = mtr_linnworks_GetVariationGroupByName($authorizeByApplication, $title_cleaned);
+
+                if (isset($response->pkVariationItemId)) {
+                  $pkVariationItemId = $response->pkVariationItemId;
+
+                  //AddVariationItems 
+                  $request = [
+                    "pkVariationItemId" => $pkVariationItemId,
+                    "pkStockItemIds" => $StockItemId
+                  ];
+                  $response = mtr_linnworks_AddVariationItems($authorizeByApplication, $request);
+                }
+              }
+            }
+          }
+        }
+      }
+      variable_set('linnworks_stock_new_product', []);
+    }
+  }
+}
+
+/**
+ * Implements hook_entity_insert().
+ */
+function mtr_commerce_linnworks_stock_management_entity_insert($entity, $type) {
+
+  $entity_types = ['accessory', 'mobile_device', 'other_tech', 'smart_watch'];
+
+  //$info = entity_get_info($type);
+  //list($id) = entity_extract_ids($type, $entity);
+
+  if ($type == 'commerce_product' && in_array($entity->type, $entity_types) && !empty($entity->sku)) {
+
+    variable_set('linnworks_stock_new_product', $entity);
+  }
+}
+
+/**
+ * Implements hook_entity_update().
+ */
+function mtr_commerce_linnworks_stock_management_entity_presave($entity, $type) {
+//  dpm ($entity, 'entity'); 
+//dpm ($type, 'type');
+  $entity_types = ['accessory', 'mobile_device', 'other_tech', 'smart_watch'];
+  // Commerce product
+  if ($type == 'commerce_product' && in_array($entity->type, $entity_types) && $entity->status != $entity->original->status && $entity->status == "0") {
+    //dpm($entity, "update entity");
+    //dpm($type, "update entity type");
+
+    module_load_include('inc', 'mtr_commerce_linnworks_stock_management');
+    $settings = array();
+
+    $entity->commerce_stock['und'][0]['value'] = 0;
+
+    // dpm($diff, "diff");
+
+    $diff = -$entity->original->commerce_stock['und'][0]['value'];
+
+    $authorizeByApplication = mtr_commerce_linnworks_stock_management_init($settings);
+
+    $response = mtr_linnworks_GetStockItemIdsBySKU($authorizeByApplication, $entity->sku);
+
+    $StockItemId = isset($response->Items[0]->StockItemId) ? $response->Items[0]->StockItemId : "";
+
+    if (!empty($StockItemId)) {
+
+      //$response = mtr_linnworks_GetInventoryItemLocations($authorizeByApplication, $StockItemId);
+
+      $request = [
+        "SKU" => $entity->sku,
+        "LocationId" => "00000000-0000-0000-0000-000000000000",
+        "Level" => $diff
+      ];
+
+      $response = mtr_linnworks_UpdateStockLevelsBySKU($authorizeByApplication, $request);
+
+      $request = [
+        "InventoryItemIds" => [
+          "$StockItemId"
+        ]
+      ];
+
+      //$response = mtr_linnworks_ArchiveInventoryItems($authorizeByApplication, $request);
+    }
+  }
+  elseif (isset($entity->type) && isset( $entity->arguments) && $entity->type == "commerce_order_state" && $entity->arguments['@order_status_previous'] == "Pending" && $entity->arguments['@order_status'] == "Refunded") {
+    $order_id = $entity->message_commerce_order['und'][0]['target_id'];
+    //$order = commerce_order_load($transaction->order_id);
+    // Checking Linnworsk - has it been uploades
+
+    module_load_include('inc', 'mtr_commerce_linnworks_stock_management');
+    $settings = array();
+
+    $authorizeByApplication = mtr_commerce_linnworks_stock_management_init($settings);
+
+    $order_details = mtr_linnworks_GetOrderDetailsByReferenceId($authorizeByApplication, $order_id);
+    if (isset($order_details[0]->OrderId)) {
+      $order_deleted = mtr_linnworks_DeleteOrder($authorizeByApplication, $order_details[0]->OrderId);
+    }
+  }
+}
+
+/**
+ * Implements hook_views_post_render().
+ */
+function mtr_commerce_linnworks_stock_management_views_post_render(&$view, &$output, &$cache) {
+
+
+  if ($view->name == 'linnworks_views' && $view->current_display == 'product_group_variation_items') {
+
+    $nids = [];
+    foreach ($view->result as $r => $result) {
+      $nids[$result->nid] = $result->nid;
+    }
+
+    $filters = $view->display_handler->get_option('filters');
+
+    $my_view_name = 'linnworks_views';
+    $my_display_name = 'product_group_variations';
+    $my_view = views_get_view($my_view_name);
+    $my_view->set_display($my_display_name);
+
+    $filters = $my_view->display_handler->get_option('filters');
+
+    if (empty($filters['nid'])) {
+      // There is no nid filter so we have to add it
+      $my_view->add_item(
+        $my_view->current_display,
+        'filter',
+        'node',
+        'nid',
+        array(
+          'operator' => '=',
+          'value' => $nids,
+          'group' => 1
+        )
+      );
+    }
+    else {
+
+      $nid_filter = $filters['nid'];
+      $i = 0;
+      foreach ($nids as $key => $nid) {
+
+        $nkey = ($i != 0) ? $nkey = "_$i" : "";
+
+        $filters["nid$nkey"] = $nid_filter;
+        $filters["nid$nkey"]['id'] = "nid$nkey";
+        $filters["nid$nkey"]['operator'] = "=";
+        $filters["nid$nkey"]['value'] = [
+          "min" => "",
+          "max" => "",
+          "value" => "$nid"
+        ];
+        $i++;
+      }
+      $my_view->display_handler->override_option('filters', $filters);
+    }
+
+    $my_view->execute();
+    $output_groups = $my_view->render();
+    $output = $output_groups . $output;
+  }
+}
+
+function mtr_commerce_linnworks_stock_management__get_referencing_node_id($product) {
+  global $language;
+
+  // Itterate thhrough fields which refer to products.
+  foreach (commerce_info_fields('commerce_product_reference') as $field['field_name']) {
+    // Build query.
+    $query = new EntityFieldQuery;
+    $query->entityCondition('entity_type', 'node', '=')
+      ->fieldCondition($field['field_name'], 'product_id', $product->product_id, '=')
+      ->propertyCondition('language', $language->language, '=')
+      ->range(0, 1);
+
+    if ($result = $query->execute()) {
+      // Return node id.
+      return array_shift(array_keys($result['node']));
+    }
+  }
+
+  return false;
+}
+
+function getNodeGUID($type) {
+  $uuid = "";
+  if (function_exists('com_create_guid')) {
+    $uuid = com_create_guid();
+    if ($type == "short") {
+      $uuid = trim(str_replace(chr(45), "", $uuid), "{}");
+    }
+  }
+  else {
+    mt_srand((double) microtime() * 10000); //optional for php 4.2.0 and up.
+    $charid = md5(uniqid(rand(), true));
+    if ($type == "short") {
+      $uuid = substr($charid, 0, 32);
+    }
+    else {
+      // $charid = strtoupper($charid);
+      $hyphen = chr(45); // "-"
+      $uuid = substr($charid, 0, 8) . $hyphen
+        . substr($charid, 8, 4) . $hyphen
+        . substr($charid, 12, 4) . $hyphen
+        . substr($charid, 16, 4) . $hyphen
+        . substr($charid, 20, 12);
+      // chr(123)// "{" chr(125); // "}"
+    }
+  }
+  return ($uuid);
+}
+
+?>

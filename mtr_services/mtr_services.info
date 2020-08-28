@@ -1,0 +1,5 @@
+name = MTR Services
+description = mtr_services
+core = 7.x
+package = MTR
+dependencies[] = services

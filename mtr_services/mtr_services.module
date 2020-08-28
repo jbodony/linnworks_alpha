@@ -1,0 +1,456 @@
+<?php
+
+/**
+ * Implements hook_services_resources().
+ */
+function mtr_services_services_resources() {
+
+  return array(
+    'linnworks' => array(
+      'actions' => array(
+        'addnewuser' => array(
+          'help' => 'Add new user',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_addnewuserendpoint',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+        'userconfig' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_userconfigendpoint',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+        'saveconfig' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_saveconfigendpoint',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+        'shippingtags' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_shippingtagsendpoint',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+        'paymenttags' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_paymenttagsendpoint',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+        'configdeleted' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_configdeletedendpoint',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+        'configtest' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_configtestendpoint',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+        'orders' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_ordersendpoint',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+        'despatch' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_despatchendpoint',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+        'cancel' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_cancelendpoint',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+        'refund' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_refundendpoint',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+          'archived' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_archived',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+        'postsaleoptions' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_postsaleoptionsendpoint',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+        'products' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_productsendpoint',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+        'inventoryupdate' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_inventoryupdateendpoint',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+        'priceupdate' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_priceupdateendpoint',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+        'inventoryupdatebatchsize' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_inventoryupdatebatchsize',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+        'priceupdatebatchsize' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_priceupdatebatchsize',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+        'despatchupdatebatchsize' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_despatchupdatebatchsize',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+        'getconfiguratorsettings' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_getconfiguratorsettings',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+        'getcategories' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_getcategories',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+        'getattributesbycategory' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_getattributesbycategory',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+        'getvariationsbycategory' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_getvariationsbycategory',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+        'listingupdate' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_listingupdate',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+        'listingdelete' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_listingdelete',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+        'checkfeed' => array(
+          'help' => 'Get HTML response',
+          'file' => array('type' => 'inc', 'module' => 'mtr_services', 'name' => 'mtr_linnworks'),
+          'callback' => '_mtr_services_linnworks_checkfeed',
+          'access callback' => 'user_access',
+          'access arguments' => array('access content'),
+          'access arguments append' => FALSE,
+          'args' => array(
+            array(
+              'name' => 'user_data',
+              'type' => 'string',
+              'description' => 'The user response json string',
+              'source' => 'data',
+              'optional' => FALSE,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}

@@ -1,4 +1,4 @@
-# linnworks_alpha
+# Linnworks_alpha
 
 This is the alpha Version of Linnworks module. It is an interface between Linnworks and Drupal7 Commerce service.
 Linnkworks is a stock/order management service: https://www.linnworks.com/
